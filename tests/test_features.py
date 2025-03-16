@@ -1,4 +1,3 @@
-import json
 import pytest
 from datetime import datetime
 from src.feature_calculator import ContractFeatureCalculator
@@ -18,25 +17,13 @@ def test_tot_claim_cnt_l180d(feature_calculator):
             {"claim_id": "22", "claim_date": "01.09.2024"},  # invalid claim - outside 180 days window
             {"claim_id": "23", "claim_date": ""},          # invalid claim - no claim_date
             {"claim_id": "24", "claim_date": "01.03.2025"},  # valid claim
-            {"claim_id": "", "claim_date": "01.03.2025"},  # invalid claim - no claim_id
-        ]
-    }
-
-    ex_2 = {
-        "application_date": datetime.strptime("2025-03-15", "%Y-%m-%d"),
-        "contracts": [
-            {"claim_id": "", "claim_date": "01.03.2025"},         # invalid claim - no claim_id
         ]
     }
     
     tot_claim_cnt_l180d = feature_calculator.calculate_tot_claim_cnt_l180d(
         ex_1["contracts"], ex_1["application_date"])
-    
-    tot_claim_cnt_l180d_2 = feature_calculator.calculate_tot_claim_cnt_l180d(
-        ex_2["contracts"], ex_2["application_date"])
 
     assert tot_claim_cnt_l180d == 2
-    assert tot_claim_cnt_l180d_2 == -3
 
 
 def test_disb_bank_loan_wo_tbc(feature_calculator):

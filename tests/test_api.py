@@ -9,13 +9,7 @@ def test_no_claims():
     payload = {
         "id": "1",
         "application_date": "2025-03-15 00:00:00.000000+00:00",
-        "contracts": json.dumps(
-            {
-                "bank": "PASHA",
-                "loan_summa": "1000",
-                "contract_date": "2025-02-01"
-            }
-        )
+        "contracts": ""
     }
     print(f"Payload: {payload}")
     response = client.post("/features", json=payload)
