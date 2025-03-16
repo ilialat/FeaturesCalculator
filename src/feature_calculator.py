@@ -1,8 +1,8 @@
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List
+from dateutil.parser import parse
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class ContractFeatureCalculator():
         """
         data = json.loads(contracts_json)
         if not isinstance(data, list):
-            raise ValueError("contracts JSON is not a list.")
+            return [data]
 
         return data
 
@@ -29,23 +29,18 @@ class ContractFeatureCalculator():
           2) 'claim_date' is not null and falls within [application_date - 180 days, application_date].
 
         Returns:
-            int: The count of valid claims. If no claim is present at all, returns -3.
+            int: The count of valid claims.
         """
-        found_claim = any(contract.get("claim_id") != "" for contract in contracts)
-        
-        if not found_claim:
-            return -3        
-        
+
         claim_cnt = 0
         min_date = application_date - timedelta(days=180)
 
         for contract in contracts:
-            if contract.get("claim_id"):
-                claim_date = contract.get("claim_date")
-                if claim_date:
-                    claim_date = datetime.strptime(claim_date, "%d.%m.%Y")
-                    if min_date <= claim_date <= application_date:
-                        claim_cnt += 1
+            claim_date = contract.get("claim_date")
+            if claim_date:
+                claim_date = datetime.strptime(claim_date, "%d.%m.%Y")
+                if min_date <= claim_date <= application_date:
+                    claim_cnt += 1
 
         return claim_cnt
 
@@ -61,8 +56,7 @@ class ContractFeatureCalculator():
 
         Returns:
             int: Sum of loan_summa for valid loans.
-                   If no claim records exist, returns -3.
-                   If claims exist but no valid loan is found, returns -1.
+                 If claims exist but no valid loan is found, returns -1.
         """
 
         total_loan_exposure = 0
@@ -72,22 +66,18 @@ class ContractFeatureCalculator():
             bank = contract.get("bank")
             contract_date = contract.get("contract_date")
             loan_summa = contract.get("loan_summa")
-            claim_id = contract.get("claim_id")
-
-            # Skip if claim_id is missing.
-            if claim_id == "":
-                continue
 
             # Skip if bank is not allowed.
             if bank in ["LIZ", "LOM", "MKO", "SUG", None, ""]:
                 continue
-            
+
             # Skip if contract_date is missing.
             if not contract_date:
                 continue
 
-            if loan_summa != "":
-                total_loan_exposure += int(loan_summa)  # Can it be a float also?   
+            if loan_summa not in ["", None]:
+                # Can it be a float also?
+                total_loan_exposure += int(loan_summa)
                 valid_loan_found = True
 
         return total_loan_exposure if valid_loan_found else -1
@@ -103,22 +93,16 @@ class ContractFeatureCalculator():
 
         Returns:
             int: The days difference between 'application_date' and the most recent loan's 'contract_date'.
-                 If no claim records exist, returns -3.
-                 If claims exist but no valid loan is found, returns -1.
+                  If claims exist but no valid loan is found, returns -1.
         """
-        found_claim = any(contract.get("claim_id")
-                          is not None for contract in contracts)
-
-        if not found_claim:
-            return -3
 
         most_recent_loan_date = None
 
         for contract in contracts:
-            loan_summa = contract.get("loan_summa")
+            summa = contract.get("summa")
             contract_date_str = contract.get("contract_date")
 
-            if not loan_summa or not contract_date_str:
+            if not summa or not contract_date_str:
                 continue
 
             current_loan_date = datetime.strptime(
@@ -152,20 +136,29 @@ class ContractFeatureCalculator():
         """
         # Check Identifiers
         application_date_str = data.get("application_date")
-        application_id = data.get("id")
+        client_id = data.get("id")
 
-        if not application_date_str or not application_id:
+        if not application_date_str or not client_id:
             raise ValueError("application_date and id fields are required.")
 
-        application_date = datetime.strptime(application_date_str, "%Y-%m-%d")
+        # application_date has different formats in data.csv
+        application_date = parse(application_date_str).replace(tzinfo=None)
 
         # Check contracts
         contracts_json = data.get("contracts")
-        if not contracts_json:
-            raise ValueError("contracts field is required.")
+        if contracts_json in ["", None, "null"]:
+            # If contracts are missing, return None for all features (or raise an error?)
+            return {
+                "tot_claim_cnt_l180d": -3,
+                "disb_bank_loan_wo_tbc": -3,
+                "day_sinlastloan": -3
+            }
+
+            # raise ValueError("contracts field is required.")
+
         contracts = self.parse_contracts(contracts_json)
-        
-        logger.info(f"Calculating features for application {application_id}.")
+
+        logger.info(f"Calculating features for client {client_id}.")
         # Calculate number of claims made in the 180 days before the application_date.
         tot_claim_cnt = self.calculate_tot_claim_cnt_l180d(
             contracts, application_date)
@@ -177,8 +170,8 @@ class ContractFeatureCalculator():
         day_sinlastloan = self.calculate_day_sinlastloan(
             contracts, application_date)
 
-        logger.info(f"Features calculated for application {application_id}.")
-        
+        logger.info(f"Features calculated for client {client_id}.")
+
         return {
             "tot_claim_cnt_l180d": tot_claim_cnt,
             "disb_bank_loan_wo_tbc": disb_bank_loan,

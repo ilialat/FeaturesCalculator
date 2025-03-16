@@ -107,22 +107,22 @@ def test_day_sinlastloan(feature_calculator):
         "contracts": [
             {
                 "claim_id": "12",
-                "loan_summa": "1000",
+                "summa": "1000",
                 "contract_date": "10.03.2025"  # most recent loan
             },
             {
                 "claim_id": "21",
-                "loan_summa": "500",
+                "summa": "500",
                 "contract_date": "10.02.2025"  # older loan
             },
             {
                 "claim_id": "22",
-                "loan_summa": "",
-                "contract_date": "12.02.2025"   # invalid loan - loan_summa missing
+                "summa": "",
+                "contract_date": "12.02.2025"   # invalid loan - summa missing
             },
             {
                 "claim_id": "23",
-                "loan_summa": "200",
+                "summa": "200",
                 "contract_date": "",   # invalid loan - contract_date missing
             },
         ]
