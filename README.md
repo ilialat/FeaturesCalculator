@@ -1,4 +1,4 @@
-# FeaturesCalculator
+# FeaturesCalculator (Assignment)
 
 This assignment is designed to help you practice your data parsing and feature engineering skills
 while building a web service using FastAPI. You will be given a dataset called data.csv that contains
